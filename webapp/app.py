@@ -6,8 +6,8 @@ import logging
 import configparser
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
-from models import Base, Category, Product, Count
-from schemas import CategorySchema, UpdateCategorySchema, ProductSchema, UpdateProductSchema
+from models import Base, Category, Product, Count, Location
+from schemas import CategorySchema, UpdateCategorySchema, ProductSchema, UpdateProductSchema, LocationSchema
 from marshmallow import ValidationError
 import requests  # For interacting with OpenFoodFacts
 from migrate import migrate_database
@@ -988,6 +988,292 @@ def get_column_visibility():
         logger.error(f"Error retrieving column visibility settings: {e}")
         return jsonify({"status": "error", "message": "Failed to retrieve settings."}), 500
 
+# ========================================
+# NIEUWE ENDPOINTS - Uitgebreide Pantrist functionaliteit
+# Plak dit BOVEN de "Run the Application" sectie
+# ========================================
+
+# -----------------------------
+# Locations Management
+# -----------------------------
+@app.route("/locations", methods=["GET", "POST", "DELETE"])
+def locations_route():
+    """Manage storage locations (vriezer, kelder, voorraadkast, etc.)"""
+    session = Session()
+    
+    if request.method == "GET":
+        try:
+            locations = session.query(Location).all()
+            location_list = [
+                {"id": loc.id, "name": loc.name, "description": loc.description}
+                for loc in locations
+            ]
+            logger.info(f"Fetched locations: {location_list}")
+            return jsonify(location_list), 200
+        except Exception as e:
+            logger.error(f"Error fetching locations: {e}")
+            return jsonify({"status": "error", "message": "Failed to fetch locations"}), 500
+        finally:
+            Session.remove()
+    
+    elif request.method == "POST":
+        try:
+            data = LocationSchema().load(request.get_json())
+        except ValidationError as err:
+            logger.warning(f"Validation error on adding location: {err.messages}")
+            return jsonify({"status": "error", "errors": err.messages}), 400
+        
+        location_name = data.get("name")
+        description = data.get("description")
+        
+        try:
+            # Check for duplicate
+            existing = session.query(Location).filter_by(name=location_name).first()
+            if existing:
+                logger.warning(f"Duplicate location attempted: {location_name}")
+                return jsonify({"status": "error", "message": "Location already exists"}), 400
+            
+            new_location = Location(name=location_name, description=description)
+            session.add(new_location)
+            session.commit()
+            logger.info(f"Added new location: {location_name}")
+            
+            locations = session.query(Location).all()
+            location_list = [
+                {"id": loc.id, "name": loc.name, "description": loc.description}
+                for loc in locations
+            ]
+            return jsonify({"status": "ok", "locations": location_list}), 200
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error adding location '{location_name}': {e}")
+            return jsonify({"status": "error", "message": "Failed to add location"}), 500
+        finally:
+            Session.remove()
+    
+    elif request.method == "DELETE":
+        data = request.get_json()
+        location_name = data.get("name")
+        
+        if not location_name:
+            logger.warning("Location name missing in delete request")
+            return jsonify({"status": "error", "message": "Location name required"}), 400
+        
+        try:
+            location = session.query(Location).filter_by(name=location_name).first()
+            if not location:
+                logger.warning(f"Attempted to delete non-existent location: {location_name}")
+                return jsonify({"status": "error", "message": "Location not found"}), 404
+            
+            # Set all products at this location to NULL location
+            products_at_location = session.query(Product).filter_by(location_id=location.id).all()
+            for product in products_at_location:
+                product.location_id = None
+                logger.info(f"Removed location from product: {product.name}")
+            
+            session.delete(location)
+            session.commit()
+            logger.info(f"Deleted location: {location_name}")
+            
+            locations = session.query(Location).all()
+            location_list = [
+                {"id": loc.id, "name": loc.name, "description": loc.description}
+                for loc in locations
+            ]
+            return jsonify({"status": "ok", "locations": location_list}), 200
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error deleting location '{location_name}': {e}")
+            return jsonify({"status": "error", "message": "Failed to delete location"}), 500
+        finally:
+            Session.remove()
+
+# -----------------------------
+# Alerts - Lage voorraad + Bijna verlopen
+# -----------------------------
+@app.route("/alerts", methods=["GET"])
+def get_alerts():
+    """Get alerts for low stock and expiring products"""
+    session = Session()
+    try:
+        products = session.query(Product).all()
+        
+        low_stock = []
+        expiring_soon = []
+        expired = []
+        
+        for product in products:
+            # Low stock check
+            if product.is_low_stock():
+                current_count = product.count.count if product.count else 0
+                low_stock.append({
+                    "name": product.name,
+                    "current_stock": current_count,
+                    "min_stock": product.min_stock,
+                    "category": product.category.name,
+                    "location": product.location.name if product.location else None
+                })
+            
+            # Expiry checks
+            if product.expiry_date:
+                if product.is_expired():
+                    expired.append({
+                        "name": product.name,
+                        "expiry_date": product.expiry_date.isoformat(),
+                        "days_past": abs(product.days_until_expiry()),
+                        "category": product.category.name
+                    })
+                elif product.is_expiring_soon():
+                    expiring_soon.append({
+                        "name": product.name,
+                        "expiry_date": product.expiry_date.isoformat(),
+                        "days_left": product.days_until_expiry(),
+                        "category": product.category.name
+                    })
+        
+        logger.info(f"Alerts: {len(low_stock)} low stock, {len(expiring_soon)} expiring soon, {len(expired)} expired")
+        return jsonify({
+            "low_stock": low_stock,
+            "expiring_soon": expiring_soon,
+            "expired": expired,
+            "total_alerts": len(low_stock) + len(expiring_soon) + len(expired)
+        }), 200
+    except Exception as e:
+        logger.error(f"Error fetching alerts: {e}")
+        return jsonify({"status": "error", "message": "Failed to fetch alerts"}), 500
+    finally:
+        Session.remove()
+
+# -----------------------------
+# Shopping List Generation
+# -----------------------------
+@app.route("/shopping_list", methods=["GET"])
+def get_shopping_list():
+    """Generate shopping list based on low stock products"""
+    session = Session()
+    try:
+        products = session.query(Product).all()
+        
+        shopping_list = []
+        for product in products:
+            if product.is_low_stock():
+                current_count = product.count.count if product.count else 0
+                needed = max(product.min_stock - current_count + 5, 1)
+                
+                shopping_list.append({
+                    "name": product.name,
+                    "current_stock": current_count,
+                    "min_stock": product.min_stock,
+                    "needed": needed,
+                    "category": product.category.name,
+                    "location": product.location.name if product.location else None,
+                    "barcode": product.barcode
+                })
+        
+        # Sort by category
+        shopping_list.sort(key=lambda x: x['category'])
+        
+        logger.info(f"Generated shopping list with {len(shopping_list)} items")
+        return jsonify({
+            "items": shopping_list,
+            "total_items": len(shopping_list)
+        }), 200
+    except Exception as e:
+        logger.error(f"Error generating shopping list: {e}")
+        return jsonify({"status": "error", "message": "Failed to generate shopping list"}), 500
+    finally:
+        Session.remove()
+
+# -----------------------------
+# Batch Operations
+# -----------------------------
+@app.route("/batch_update_location", methods=["POST"])
+def batch_update_location():
+    """Update location for multiple products at once"""
+    session = Session()
+    data = request.get_json()
+    
+    product_names = data.get("products", [])
+    new_location_name = data.get("location")
+    
+    if not product_names or not new_location_name:
+        return jsonify({"status": "error", "message": "Products and location required"}), 400
+    
+    try:
+        location = session.query(Location).filter_by(name=new_location_name).first()
+        if not location:
+            return jsonify({"status": "error", "message": "Location not found"}), 404
+        
+        updated_count = 0
+        for product_name in product_names:
+            product = session.query(Product).filter_by(name=product_name).first()
+            if product:
+                product.location_id = location.id
+                updated_count += 1
+        
+        session.commit()
+        logger.info(f"Batch updated {updated_count} products to location: {new_location_name}")
+        return jsonify({
+            "status": "ok",
+            "updated_count": updated_count,
+            "message": f"Updated {updated_count} products"
+        }), 200
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error in batch update location: {e}")
+        return jsonify({"status": "error", "message": "Batch update failed"}), 500
+    finally:
+        Session.remove()
+
+# -----------------------------
+# Product Statistics
+# -----------------------------
+@app.route("/statistics", methods=["GET"])
+def get_statistics():
+    """Get overview statistics"""
+    session = Session()
+    try:
+        total_products = session.query(Product).count()
+        total_categories = session.query(Category).count()
+        total_locations = session.query(Location).count()
+        
+        # Calculate total stock
+        total_stock = 0
+        for count_entry in session.query(Count).all():
+            total_stock += count_entry.count
+        
+        # Low stock count
+        low_stock_count = 0
+        for product in session.query(Product).all():
+            if product.is_low_stock():
+                low_stock_count += 1
+        
+        # Expiring soon count
+        expiring_count = 0
+        for product in session.query(Product).all():
+            if product.expiry_date and product.is_expiring_soon():
+                expiring_count += 1
+        
+        stats = {
+            "total_products": total_products,
+            "total_categories": total_categories,
+            "total_locations": total_locations,
+            "total_stock_items": total_stock,
+            "low_stock_products": low_stock_count,
+            "expiring_soon_products": expiring_count
+        }
+        
+        logger.info(f"Statistics: {stats}")
+        return jsonify(stats), 200
+    except Exception as e:
+        logger.error(f"Error fetching statistics: {e}")
+        return jsonify({"status": "error", "message": "Failed to fetch statistics"}), 500
+    finally:
+        Session.remove()
+
+# ========================================
+# EINDE NIEUWE ENDPOINTS
+# ========================================
 
 
 # -----------------------------

@@ -1,8 +1,8 @@
-ARG BUILD_FROM
-FROM $BUILD_FROM
+# Use clean Alpine with Python (no s6-overlay)
+FROM python:3.11-alpine3.19
 
-# Install necessary packages including openssl
-RUN apk add --no-cache python3 py3-pip openssl
+# Install necessary packages
+RUN apk add --no-cache openssl bash
 
 # Create a virtual environment
 RUN python3 -m venv /opt/venv
@@ -20,7 +20,7 @@ WORKDIR /opt/webapp
 # Set the PATH to include the virtual environment
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy run script to correct location for Home Assistant add-ons
+# Copy run script
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 

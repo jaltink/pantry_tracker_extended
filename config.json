@@ -1,7 +1,6 @@
 {
   "name": "Pantry Tracker Extended",
-  "version": "1.0.0",
-  "slug": "pantry_tracker_extended",
+  "version": "1.0.1",  "slug": "pantry_tracker_extended",
   "description": "Extended Pantry Tracker with locations, min_stock, expiry dates and enhanced features",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
   "startup": "application",

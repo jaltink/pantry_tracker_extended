@@ -34,7 +34,7 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-amd64:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-amd64:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-amd64:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-amd64:${{ github.sha }},ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-amd64:1.0.1
 
   build-aarch64:
     runs-on: ubuntu-latest
@@ -62,7 +62,7 @@ jobs:
           file: ./Dockerfile
           platforms: linux/arm64
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-aarch64:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-aarch64:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-aarch64:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-aarch64:${{ github.sha }},ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-aarch64:1.0.1,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-aarch64:1.0.1
 
   build-armhf:
     runs-on: ubuntu-latest

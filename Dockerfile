@@ -14,9 +14,15 @@ RUN /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 # Copy the application files
 COPY webapp /opt/webapp
 
-# Copy the run script to s6-overlay services directory
-COPY run.sh /etc/services.d/pantry_tracker/run
-RUN chmod +x /etc/services.d/pantry_tracker/run
+# Set working directory
+WORKDIR /opt/webapp
 
 # Set the PATH to include the virtual environment
 ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy run script to correct location for Home Assistant add-ons
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+
+# Run the application
+CMD ["/run.sh"]

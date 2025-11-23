@@ -28,7 +28,7 @@ class ProductSchema(Schema):
     image_front_small_url = fields.Str(required=False, allow_none=True, validate=validate.URL())
     
     # NIEUWE VELDEN
-    min_stock = fields.Int(required=False, missing=5, validate=validate.Range(min=0, max=1000))
+    min_stock = fields.Int(required=False, load_default=5, validate=validate.Range(min=0, max=1000))
     location = fields.Str(required=False, allow_none=True, validate=validate.Length(min=1, max=50))
     expiry_date = fields.Date(required=False, allow_none=True)
     notes = fields.Str(required=False, allow_none=True, validate=validate.Length(max=500))

@@ -1,4 +1,5 @@
-#!/bin/bash# Start the Flask app with SSL
+#!/bin/bash
+# Start the Flask app with SSL
 
 # Enable debug mode for the shell script (optional but helpful for troubleshooting)
 #set -x

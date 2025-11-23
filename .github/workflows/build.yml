@@ -35,6 +35,8 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+                    build-args: |
+            BUILD_FROM=ghcr.io/home-assistant/${{ matrix.arch == 'aarch64' && 'aarch64' || matrix.arch == 'armhf' && 'armhf' || matrix.arch == 'armv7' && 'armv7' || 'amd64' }}-base:3.19
           platforms: linux/${{ matrix.arch == 'armhf' && 'arm/v6' || matrix.arch == 'armv7' && 'arm/v7' || matrix.arch == 'aarch64' && 'arm64' || matrix.arch }}
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-${{ matrix.arch }}:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-${{ matrix.arch }}:1.0.0

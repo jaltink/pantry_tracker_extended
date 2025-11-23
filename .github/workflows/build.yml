@@ -32,10 +32,9 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          build-args: BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.19
           platforms: linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-amd64:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-amd64:1.0.0
+          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-amd64:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-amd64:${{ github.sha }}
 
   build-aarch64:
     runs-on: ubuntu-latest
@@ -61,10 +60,9 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          build-args: BUILD_FROM=ghcr.io/home-assistant/aarch64-base:3.19
           platforms: linux/arm64
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-aarch64:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-aarch64:1.0.0
+          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-aarch64:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-aarch64:${{ github.sha }}
 
   build-armhf:
     runs-on: ubuntu-latest
@@ -90,10 +88,9 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          build-args: BUILD_FROM=ghcr.io/home-assistant/armhf-base:3.19
           platforms: linux/arm/v6
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-armhf:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-armhf:1.0.0
+          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-armhf:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-armhf:${{ github.sha }}
 
   build-armv7:
     runs-on: ubuntu-latest
@@ -119,7 +116,6 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          build-args: BUILD_FROM=ghcr.io/home-assistant/armv7-base:3.19
           platforms: linux/arm/v7
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-armv7:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-armv7:1.0.0
+          tags: ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-armv7:latest,ghcr.io/${{ github.repository_owner }}/pantry-tracker-extended-armv7:${{ github.sha }}

@@ -14,5 +14,5 @@
   },
   "options": {},
   "schema": {},
-  "image": "ghcr.io/jaltink/pantry-tracker-extended-{arch}"
+  "image": "ghcr.io/jaltink/pantry-tracker-extended-{arch}:latest"}
 }

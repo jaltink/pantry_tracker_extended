@@ -56,3 +56,4 @@ async def async_unload_entry(hass: HomeAssistant, entry):
 
     _LOGGER.info("Pantry Tracker integration unloaded successfully.")
     return True
+
